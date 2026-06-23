@@ -1,0 +1,48 @@
+# -- Environment & Secrets 
+.env
+.env.*
+!.env.example
+
+# -- Dependencies 
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# -- Logs 
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -- OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -- Editor / IDE 
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+
+# -- Build / Cache 
+dist/
+build/
+.cache/
+.temp/
+tmp/
+
+# -- PowerShell temp scripts (dibuat runtime) 
+*.ps1.tmp
