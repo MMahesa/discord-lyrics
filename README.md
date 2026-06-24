@@ -2,7 +2,7 @@
 
 # 🎵 Discord Lyrics Status
 
-**Sinkronkan lirik Spotify secara real-time ke custom status Discord kamu**
+**Sync Spotify lyrics in real-time to your Discord custom status**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen)](https://nodejs.org)
@@ -13,33 +13,33 @@
 
 ---
 
-## ✨ Fitur
+## ✨ Features
 
-- 🎵 **Lirik real-time** — ditampilkan baris per baris mengikuti posisi lagu
-- 💬 **Status Discord otomatis** — lirik langsung muncul di custom status kamu
-- 🌐 **Web Dashboard** — tampilan visual di browser (`http://localhost:3000`)
-- 🖥️ **Terminal UI** — box display langsung di terminal dengan progress bar
-- 🎛️ **Menu mode saat startup** — pilih mode Terminal, Dashboard, atau keduanya
-- 🎨 **Album art + genre** — metadata via iTunes API (tanpa API key)
-- ⚡ **Rate-limit aware** — menghormati batas Discord API secara otomatis
-- 🔄 **Lyrics cache** — meminimalkan request ke lrclib.net
+- 🎵 **Real-time lyrics** — displayed line by line in sync with the current song position
+- 💬 **Automatic Discord status** — lyrics appear directly in your custom status
+- 🌐 **Web Dashboard** — visual display in your browser at `http://localhost:3000`
+- 🖥️ **Terminal UI** — box display with progress bar rendered directly in the terminal
+- 🎛️ **Startup mode menu** — choose between Terminal, Dashboard, or both on launch
+- 🎨 **Album art + genre** — metadata fetched via iTunes API (no API key required)
+- ⚡ **Rate-limit aware** — automatically respects Discord API rate limits
+- 🔄 **Lyrics cache** — minimizes repeated requests to lrclib.net
 
 ---
 
-## 📋 Prasyarat
+## 📋 Prerequisites
 
-| Kebutuhan | Versi |
-|-----------|-------|
-| OS | **Windows 10/11** (pakai SMTC untuk baca Spotify) |
+| Requirement | Version |
+|-------------|---------|
+| OS | **Windows 10/11** (uses SMTC to read Spotify) |
 | Node.js | **v18+** |
-| Spotify | Desktop app yang sedang memutar musik |
-| Discord | Akun aktif dengan token |
+| Spotify | Desktop app actively playing music |
+| Discord | Active account with a valid user token |
 
 ---
 
-## 🚀 Instalasi
+## 🚀 Installation
 
-### 1. Clone repo
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/MMahesa/discord-lyrics.git
@@ -52,9 +52,9 @@ cd discord-lyrics
 npm install
 ```
 
-### 3. Konfigurasi `.env`
+### 3. Configure `.env`
 
-Salin file contoh lalu isi nilainya:
+Copy the example file and fill in your values:
 
 ```bash
 cp .env.example .env
@@ -63,75 +63,75 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-DISCORD_USER_TOKEN=token_discord_kamu_disini
+DISCORD_USER_TOKEN=your_discord_token_here
 POLL_INTERVAL_MS=800
 WEB_PORT=3000
 ```
 
-### 4. Jalankan
+### 4. Run
 
 ```bash
 npm start
 ```
 
-Saat startup, kamu akan melihat **menu pilihan mode**:
+On startup, you will see a **mode selection menu**:
 
 ```
-? Pilih mode tampilan:
-  ❯ Terminal + Dashboard (keduanya)
-    Terminal saja
-    Dashboard saja (buka browser otomatis)
+  Select display mode:
+  ❯ Terminal + Dashboard (both)
+    Terminal only
+    Dashboard only (opens browser automatically)
 ```
 
 ---
 
-## 🔑 Cara Mendapatkan Discord Token
+## 🔑 How to Get Your Discord Token
 
-> ⚠️ **Peringatan:** Discord User Token bersifat **sangat sensitif**. Jangan pernah share ke siapapun atau commit ke git. Token ini memberikan akses penuh ke akun kamu.
+> ⚠️ **Warning:** Your Discord User Token is **highly sensitive**. Never share it with anyone or commit it to version control. This token grants full access to your account.
 
-1. Buka **Discord** di browser (bukan aplikasi)
-2. Tekan `F12` → buka tab **Network**
-3. Filter request dengan kata `api`
-4. Klik request ke `discord.com/api` manapun
-5. Lihat tab **Headers** → cari `Authorization`
-6. Salin nilai tersebut ke `DISCORD_USER_TOKEN` di file `.env`
+1. Open **Discord** in your web browser (not the desktop app)
+2. Press `F12` to open DevTools → go to the **Network** tab
+3. Filter requests by `api`
+4. Click any request to `discord.com/api`
+5. Open the **Headers** tab → look for `Authorization`
+6. Copy that value into `DISCORD_USER_TOKEN` in your `.env` file
 
 ---
 
-## 🎛️ Mode Jalankan
+## 🎛️ Display Modes
 
-Saat `npm start`, kamu akan ditanya mode tampilan:
+When you run `npm start`, you will be prompted to select a display mode:
 
-| Mode | Deskripsi |
-|------|-----------|
-| **Terminal + Dashboard** | Tampilan di terminal dan web dashboard di browser |
-| **Terminal saja** | Hanya box UI di terminal, web server tidak dijalankan |
-| **Dashboard saja** | Web server aktif, browser dibuka otomatis, terminal minimal |
+| Mode | Description |
+|------|-------------|
+| **Terminal + Dashboard** | Terminal UI and web dashboard open simultaneously |
+| **Terminal only** | Box UI in the terminal only; web server is not started |
+| **Dashboard only** | Web server starts, browser opens automatically, minimal terminal output |
 
-Mode juga bisa di-set permanen di `.env`:
+You can also set the mode permanently in `.env`:
 
 ```env
 RUN_MODE=both        # Terminal + Dashboard
-RUN_MODE=terminal    # Terminal saja
-RUN_MODE=dashboard   # Dashboard saja
+RUN_MODE=terminal    # Terminal only
+RUN_MODE=dashboard   # Dashboard only
 ```
 
 ---
 
-## 📁 Struktur Proyek
+## 📁 Project Structure
 
 ```
 discord-lyrics/
 ├── src/
-│   ├── index.js       # Entry point + loop utama + menu CLI
-│   ├── spotify.js     # Baca media aktif via Windows SMTC (PowerShell)
-│   ├── lyrics.js      # Fetch & parse lirik dari lrclib.net
-│   ├── status.js      # Update custom status Discord
-│   ├── dashboard.js   # Render terminal UI (chalk box)
-│   ├── musicmeta.js   # Metadata lagu via iTunes API
-│   └── webserver.js   # Express server + SSE + HTML dashboard
-├── .env               # Konfigurasi lokal (tidak di-commit)
-├── .env.example       # Template konfigurasi
+│   ├── index.js       # Entry point, main loop, and CLI menu
+│   ├── spotify.js     # Reads active media via Windows SMTC (PowerShell)
+│   ├── lyrics.js      # Fetches and parses synced lyrics from lrclib.net
+│   ├── status.js      # Updates Discord custom status via API
+│   ├── dashboard.js   # Renders terminal UI (chalk box display)
+│   ├── musicmeta.js   # Fetches track metadata via iTunes API
+│   └── webserver.js   # Express server, SSE endpoint, and web dashboard HTML
+├── .env               # Local configuration (not committed to git)
+├── .env.example       # Configuration template
 ├── .gitignore
 ├── LICENSE
 ├── package.json
@@ -140,58 +140,58 @@ discord-lyrics/
 
 ---
 
-## ⚙️ Konfigurasi Lengkap
+## ⚙️ Configuration Reference
 
-| Variabel | Default | Deskripsi |
-|----------|---------|-----------|
-| `DISCORD_USER_TOKEN` | _(wajib)_ | Token akun Discord kamu |
-| `POLL_INTERVAL_MS` | `800` | Interval cek Spotify (ms) |
-| `WEB_PORT` | `3000` | Port web dashboard |
-| `RUN_MODE` | _(tanya saat start)_ | `terminal`, `dashboard`, atau `both` |
-| `DEBUG_POSITION` | `0` | Set `1` untuk debug posisi lirik |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DISCORD_USER_TOKEN` | *(required)* | Your Discord account token |
+| `POLL_INTERVAL_MS` | `800` | How often to poll Spotify, in milliseconds |
+| `WEB_PORT` | `3000` | Port for the web dashboard |
+| `RUN_MODE` | *(prompted on start)* | `terminal`, `dashboard`, or `both` |
+| `DEBUG_POSITION` | `0` | Set to `1` to enable lyric position debug logging |
 
 ---
 
 ## 🛠️ Troubleshooting
 
-**Status tidak berubah di Discord?**
-- Pastikan `DISCORD_USER_TOKEN` sudah benar
-- Cek apakah Spotify sedang aktif memutar lagu (bukan pause)
+**Status not updating on Discord?**
+- Make sure `DISCORD_USER_TOKEN` is correct and up to date
+- Verify Spotify is actively playing (not paused)
 
-**Lirik tidak muncul?**
-- Tidak semua lagu ada di database lrclib.net
-- Coba lagu yang lebih populer untuk test
+**Lyrics not showing?**
+- Not every track is available in the lrclib.net database
+- Try a more popular song to confirm the feature is working
 
-**Dashboard tidak terbuka?**
-- Buka manual: `http://localhost:3000`
-- Pastikan port `3000` tidak dipakai aplikasi lain (ubah `WEB_PORT` jika perlu)
+**Dashboard not opening?**
+- Open it manually at `http://localhost:3000`
+- Make sure port `3000` is not in use by another application (change `WEB_PORT` if needed)
 
-**Error PowerShell?**
-- Pastikan kamu menggunakan Windows 10/11
-- Jalankan sebagai user biasa (bukan Administrator)
+**PowerShell error?**
+- Make sure you are running Windows 10 or 11
+- Run as a regular user (not Administrator)
 
 ---
 
 ## 📦 Dependencies
 
-| Package | Versi | Kegunaan |
-|---------|-------|----------|
+| Package | Version | Purpose |
+|---------|---------|---------|
 | `axios` | ^1.7.7 | HTTP requests (Discord API, lyrics, metadata) |
-| `chalk` | ^5.3.0 | Warna terminal |
-| `dotenv` | ^16.4.5 | Load variabel dari `.env` |
+| `chalk` | ^5.3.0 | Terminal colors |
+| `dotenv` | ^16.4.5 | Load variables from `.env` |
 | `express` | ^4.19.2 | Web dashboard server |
 
 ---
 
 ## ⚠️ Disclaimer
 
-Proyek ini menggunakan **Discord User Token** (bukan Bot Token) untuk mengubah custom status. Penggunaan user token untuk otomatisasi melanggar [Terms of Service Discord](https://discord.com/terms). Gunakan dengan risiko sendiri. Project ini dibuat murni untuk keperluan pribadi dan edukasi.
+This project uses a **Discord User Token** (not a Bot Token) to update your custom status. Automating actions with a user token violates [Discord's Terms of Service](https://discord.com/terms). Use at your own risk. This project was built purely for personal use and educational purposes.
 
 ---
 
-## 📄 Lisensi
+## 📄 License
 
-Didistribusikan di bawah **MIT License** — lihat file [LICENSE](LICENSE) untuk detail.
+Distributed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 

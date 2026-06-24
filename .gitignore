@@ -46,3 +46,4 @@ tmp/
 
 # -- PowerShell temp scripts (dibuat runtime) 
 *.ps1.tmp
+*.png

@@ -1,7 +1,7 @@
 {
   "name": "discord-lyrics",
   "version": "2.0.0",
-  "description": "Sinkronkan lirik Spotify (real-time) ke custom status Discord + web dashboard",
+  "description": "Sync Spotify lyrics in real-time to your Discord custom status with a web dashboard",
   "main": "src/index.js",
   "type": "module",
   "author": "mmahesa",

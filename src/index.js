@@ -1,152 +1,181 @@
 import "dotenv/config";
-import readline from "readline";
-import { getCurrentTrack } from "./spotify.js";
-import { getSyncedLyrics, findCurrentLine } from "./lyrics.js";
-import { setStatus, clearStatus } from "./status.js";
+import { getCurrentTrack }                        from "./spotify.js";
+import { getSyncedLyrics, findContextLines }      from "./lyrics.js";
+import { setStatus, clearStatus }                  from "./status.js";
 import { printStartupBanner, renderIdle, renderNowPlaying } from "./dashboard.js";
-import { getTrackMeta } from "./musicmeta.js";
-import { startWebServer, broadcastState } from "./webserver.js";
+import { getTrackMeta }                            from "./musicmeta.js";
+import { startWebServer, broadcastState }          from "./webserver.js";
 
+// ── env ──────────────────────────────────────────────────────────────────────
 const TOKEN         = process.env.DISCORD_USER_TOKEN;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || "800", 10);
 const WEB_PORT      = parseInt(process.env.WEB_PORT || "3000", 10);
 const DEBUG         = process.env.DEBUG_POSITION === "1";
 
 if (!TOKEN) {
-  console.error("DISCORD_USER_TOKEN belum diisi di file .env. Lihat README.");
+  console.error("DISCORD_USER_TOKEN is not set in .env. See README for instructions.");
   process.exit(1);
 }
 
-// ── Mode constants ────────────────────────────────────────────────────────────
 const MODE = {
   BOTH:      "both",
   TERMINAL:  "terminal",
   DASHBOARD: "dashboard",
 };
 
-// ── CLI Menu ──────────────────────────────────────────────────────────────────
 const MENU_OPTIONS = [
-  { label: "Terminal + Dashboard (keduanya)", value: MODE.BOTH },
-  { label: "Terminal saja",                   value: MODE.TERMINAL },
-  { label: "Dashboard saja (buka browser)",   value: MODE.DASHBOARD },
+  { label: "Terminal + Dashboard (both)", value: MODE.BOTH },
+  { label: "Terminal only",               value: MODE.TERMINAL },
+  { label: "Dashboard only (opens browser automatically)", value: MODE.DASHBOARD },
 ];
 
+// ── Interactive arrow-key menu ────────────────────────────────────────────────
 function promptMode() {
   return new Promise((resolve) => {
     const envMode = process.env.RUN_MODE?.toLowerCase();
     if (envMode && Object.values(MODE).includes(envMode)) {
-      console.log(`\n▶  Mode dari .env: ${envMode}\n`);
+      console.log(`\n▶  Mode from .env: ${envMode}\n`);
       resolve(envMode);
+      return;
+    }
+
+    if (!process.stdin.isTTY) {
+      console.log("\n▶  Non-TTY detected — defaulting to: both\n");
+      resolve(MODE.BOTH);
       return;
     }
 
     let selected = 0;
 
-    const rl = readline.createInterface({
-      input:  process.stdin,
-      output: process.stdout,
-    });
+    const ROWS_HEADER = 2;
+    let drawnRows = 0;
 
-    // Enable raw mode 
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-    }
-
-    function render() {
-      if (render.lines) {
-        process.stdout.write(`\x1b[${render.lines}A\x1b[0J`);
-      }
-      const lines = ["\n  Pilih mode tampilan:\n"];
+    function buildRows() {
+      const rows = [];
       MENU_OPTIONS.forEach((opt, i) => {
-        const cursor = i === selected ? "  \u276f " : "    ";
-        const text   = i === selected
-          ? `\x1b[1;36m${opt.label}\x1b[0m`
-          : `\x1b[90m${opt.label}\x1b[0m`;
-        lines.push(`${cursor}${text}`);
+        const arrow  = i === selected ? "  \u276f " : "    ";
+        const colour = i === selected ? "\x1b[1;36m" : "\x1b[90m";
+        rows.push(`${arrow}${colour}${opt.label}\x1b[0m`);
       });
-      lines.push("\n  \x1b[90m\u2191\u2193 navigasi  \u2022  Enter konfirmasi\x1b[0m\n");
-      process.stdout.write(lines.join("\n"));
-      render.lines = lines.length;
+      rows.push("");
+      rows.push("  \x1b[90m\u2191\u2193 navigate  \u2022  Enter to confirm\x1b[0m");
+      return rows;
     }
 
-    render.lines = 0;
-    render();
-
-    process.stdin.on("data", (key) => {
-      const k = key.toString();
-
-      if (k === "\x1b[A") {
-        // Arrow Up
-        selected = (selected - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length;
-        render();
-      } else if (k === "\x1b[B") {
-        // Arrow Down
-        selected = (selected + 1) % MENU_OPTIONS.length;
-        render();
-      } else if (k === "\r" || k === "\n") {
-        // Enter
-        if (process.stdin.isTTY) process.stdin.setRawMode(false);
-        rl.close();
-        process.stdout.write(`\x1b[${render.lines}A\x1b[0J`);
-        const choice = MENU_OPTIONS[selected];
-        console.log(`\n  \u2714  Mode: \x1b[1;32m${choice.label}\x1b[0m\n`);
-        resolve(choice.value);
-      } else if (k === "\x03") {
-        // Ctrl+C
-        if (process.stdin.isTTY) process.stdin.setRawMode(false);
-        rl.close();
-        process.exit(0);
+    function renderMenu() {
+      if (drawnRows > 0) {
+        process.stdout.write(`\x1b[${drawnRows}A\x1b[0J`);
       }
-    });
+      const rows = buildRows();
+      process.stdout.write(rows.join("\n") + "\n");
+      drawnRows = rows.length;
+    }
+
+    process.stdout.write("\n  Select display mode:\n\n");
+    renderMenu();
+
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding("utf8");
+
+    function onKey(key) {
+      switch (key) {
+        case "\x1b[A":
+          selected = (selected - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length;
+          renderMenu();
+          break;
+
+        case "\x1b[B":
+          selected = (selected + 1) % MENU_OPTIONS.length;
+          renderMenu();
+          break;
+
+        case "\r":
+        case "\n": {
+          process.stdin.setRawMode(false);
+          process.stdin.removeListener("data", onKey);
+          if (drawnRows > 0) process.stdout.write(`\x1b[${drawnRows}A\x1b[0J`);
+          const choice = MENU_OPTIONS[selected];
+          console.log(`  \u2714  Mode: \x1b[1;32m${choice.label}\x1b[0m\n`);
+          resolve(choice.value);
+          break;
+        }
+
+        case "\x03":
+          process.stdin.setRawMode(false);
+          process.stdin.removeListener("data", onKey);
+          process.exit(0);
+      }
+    }
+
+    process.stdin.on("data", onKey);
   });
 }
 
-// -- State --
+// ── State ────────────────────────────────────────────────────────────────────
 let lastTrackKey  = null;
 let currentLyrics = null;
 let currentMeta   = null;
+let isIdle        = true;
 
-function extrapolate(track) {
+// ── Tick mutex — prevents concurrent ticks from racing on lastRenderLines ────
+// setInterval fires every POLL_INTERVAL ms regardless of whether the previous
+// tick finished (lyrics/meta fetch can take 2-15 s on song change).  Without
+// this guard, multiple concurrent render() calls corrupt the cursor-position
+// bookkeeping and cause the box to "stack" instead of redrawing in place.
+let tickBusy = false;
+
+function extrapolatePosition(track) {
   let pos = track.positionMs + track.elapsedSinceUpdateMs;
   if (track.durationMs) pos = Math.min(pos, track.durationMs);
   return pos;
 }
 
-// -- Tick --
+// ── Main tick ─────────────────────────────────────────────────────────────────
 async function tick(webUrl, mode) {
   const track = await getCurrentTrack();
 
   if (!track) {
-    await clearStatus(TOKEN);
-    lastTrackKey  = null;
-    currentLyrics = null;
-    currentMeta   = null;
+    if (!isIdle) {
+      isIdle = true;
+      lastTrackKey  = null;
+      currentLyrics = null;
+      currentMeta   = null;
+      await clearStatus(TOKEN);
+    }
     if (mode !== MODE.DASHBOARD) {
-      renderIdle("Menunggu Spotify memutar sesuatu...");
+      renderIdle("Waiting for Spotify to play something...");
     }
     broadcastState({ playing: false });
     return;
   }
 
-  const trackKey = `${track.artist}|${track.title}`;
+  isIdle = false;
 
+  const trackKey = `${track.artist}|${track.title}`;
   if (trackKey !== lastTrackKey) {
-    lastTrackKey = trackKey;
+    lastTrackKey  = trackKey;
+    // Reset lyrics/meta immediately so stale data from the previous song
+    // isn't shown while the new fetch is in progress
+    currentLyrics = null;
+    currentMeta   = null;
     [currentLyrics, currentMeta] = await Promise.all([
       getSyncedLyrics(track.artist, track.title, track.durationMs),
       getTrackMeta(track.artist, track.title),
     ]);
   }
 
-  const position  = extrapolate(track);
-  const lyricLine = currentLyrics ? findCurrentLine(currentLyrics, position) : null;
+  const position = extrapolatePosition(track);
+  const { prev, current, next } = currentLyrics
+    ? findContextLines(currentLyrics, position)
+    : { prev: null, current: null, next: null };
 
   if (DEBUG) {
-    console.log(`[debug] pos=${position} line="${lyricLine?.text}"`);
+    console.log(`[debug] pos=${position} line="${current?.text}"`);
   }
 
-  if (lyricLine) {
-    setStatus(TOKEN, `🎵 ${lyricLine.text}`);
+  if (current) {
+    setStatus(TOKEN, `🎵 ${current.text}`);
   } else if (!currentLyrics) {
     setStatus(TOKEN, `🎵 ${track.title} — ${track.artist}`);
   }
@@ -157,9 +186,12 @@ async function tick(webUrl, mode) {
     artist:     track.artist,
     positionMs: position,
     durationMs: track.durationMs,
-    lyricLine:  lyricLine?.text ?? (currentLyrics ? null : `${track.title} — ${track.artist}`),
+    lyricLine:  current?.text ?? (currentLyrics ? null : `${track.title} — ${track.artist}`),
+    prevLyric:  prev?.text    ?? null,
+    nextLyric:  next?.text    ?? null,
     hasLyrics:  !!currentLyrics,
-    genre:      currentMeta?.genre ?? null,
+    genre:      currentMeta?.genre      ?? null,
+    album:      currentMeta?.album      ?? null,
     artworkUrl: currentMeta?.artworkUrl ?? null,
   };
 
@@ -170,34 +202,50 @@ async function tick(webUrl, mode) {
   broadcastState(payload);
 }
 
-// -- Boot --
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
 printStartupBanner();
 
 const mode = await promptMode();
-
 let webUrl = null;
 
 if (mode === MODE.TERMINAL) {
-  renderIdle("Menyiapkan koneksi (mode: terminal)...");
+  renderIdle("Establishing connection (mode: terminal)...");
 } else {
   webUrl = startWebServer(WEB_PORT);
   console.log(`🌐  Web dashboard: \x1b[34m${webUrl}\x1b[0m\n`);
 
   if (mode === MODE.DASHBOARD) {
     const { exec } = await import("child_process");
-    exec(`start ${webUrl}`);
-    console.log("🖥️   Browser dibuka otomatis...\n");
+    const openCmd  = process.platform === "darwin" ? "open"
+                   : process.platform === "win32"  ? "start"
+                   : "xdg-open";
+    exec(`${openCmd} ${webUrl}`);
+    console.log("🖥️   Opening browser automatically...\n");
   } else {
-    renderIdle("Menyiapkan koneksi (mode: terminal + dashboard)...");
+    renderIdle("Establishing connection (mode: terminal + dashboard)...");
   }
 }
 
-const tickFn = () => tick(webUrl, mode).catch((e) => console.error("Error:", e.message));
-setInterval(tickFn, POLL_INTERVAL);
+// ── Tick loop — mutex-guarded to prevent concurrent renders ───────────────────
+const tickFn = async () => {
+  if (tickBusy) return;           // skip this interval if previous tick is still running
+  tickBusy = true;
+  try {
+    await tick(webUrl, mode);
+  } catch (e) {
+    console.error("Tick error:", e.message);
+  } finally {
+    tickBusy = false;
+  }
+};
+
+const interval = setInterval(tickFn, POLL_INTERVAL);
 tickFn();
 
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
 process.on("SIGINT", async () => {
+  clearInterval(interval);
   await clearStatus(TOKEN);
-  console.log("\n\nDihentikan. Status Discord sudah dibersihkan.");
+  console.log("\n\nStopped. Discord status has been cleared.");
   process.exit(0);
 });

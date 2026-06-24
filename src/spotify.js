@@ -6,6 +6,8 @@ import { tmpdir } from "os";
 
 const execAsync = promisify(exec);
 
+// reads the active media session via Windows SMTC and dumps it as JSON.
+// written to a temp file at runtime to dodge shell-quoting issues on Windows.
 const PS_SCRIPT = `
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
@@ -58,6 +60,10 @@ try {
 }
 `;
 
+/**
+ * Reads the currently playing track from Windows SMTC.
+ * Returns null if nothing is playing, the session isn't Spotify, or it fails.
+ */
 export async function getCurrentTrack() {
   let tmpDir;
   try {
@@ -67,22 +73,24 @@ export async function getCurrentTrack() {
 
     const { stdout } = await execAsync(
       `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`,
-      { maxBuffer: 1024 * 1024 }
+      { maxBuffer: 1024 * 1024 },
     );
 
     const data = JSON.parse(stdout.trim());
     if (!data.playing) return null;
+
+    // ignore non-Spotify sessions (system sounds, other media players, etc)
     if (data.appId && !data.appId.toLowerCase().includes("spotify")) return null;
 
     return {
-      title: data.title,
-      artist: data.artist,
-      positionMs: data.positionMs,
-      durationMs: data.durationMs,
+      title:                data.title,
+      artist:               data.artist,
+      positionMs:           data.positionMs,
+      durationMs:           data.durationMs,
       elapsedSinceUpdateMs: data.elapsedSinceUpdateMs || 0,
     };
   } catch (err) {
-    console.error("Gagal membaca SMTC:", err.message);
+    console.error("Failed to read SMTC data:", err.message);
     return null;
   } finally {
     if (tmpDir) await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
